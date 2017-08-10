@@ -32,14 +32,19 @@ public class LeapMouseKit : MonoBehaviour
     public bool sticking;
 
     //Right hand data
-    public Vector3 runtimePosition_right;
-    public Vector3 worldPosition_right;
-    public Vector2 screenPosition_right;
-    public float grabStrength_right;
+    public static Vector3 runtimePosition_right;
+    public static Vector3 worldPosition_right;
+    public static Vector2 screenPosition_right;
+    public static float grabStrength_right;
     //Left hand data
+    public static Vector3 runtimePosition_left;
+    public static Vector3 worldPosition_left;
+    public static Vector2 screenPosition_left;
+    public static float grabStrength_left;
     #endregion
 
     #region Setup
+    private Leap.Controller controller;
     public CursorType cursorType;
     public enum CursorType { Gui, GameObject };
     public bool mouseMode;
@@ -65,16 +70,13 @@ public class LeapMouseKit : MonoBehaviour
     public Texture2D openMouse;
     #endregion
 
-    #region Trigger
-
-    #endregion
-
-    private Leap.Controller controller;
-
     public HandState handState;
     public enum HandState { Hold, Circle, ScreenTap, KeyTap, Swipe, HandOpen, HandClose, HandForward, HandBack, HandUp, HandDown, HandLeft, HandRight, Show, Miss }
-    private Texture2D _textureStorage_right;
-    private GameObject _cursorObject_right;
+    private Texture2D textureStorage_right;
+    private GameObject cursorObject_right;
+    public GameObject lastStickTarget;
+    public static HandSide handSide;
+    public enum HandSide { Left, Right };
 
     void Awake()
     {
@@ -94,29 +96,33 @@ public class LeapMouseKit : MonoBehaviour
             if (cursorObject != null)
             {
                 GameObject _r = Instantiate(cursorObject, new Vector3(0f, 0f, transform.position.z), Quaternion.identity) as GameObject;
-                _cursorObject_right = _r;
-                _cursorObject_right.name = "Cursor Object Right";
+                cursorObject_right = _r;
+                cursorObject_right.name = "Cursor Object Right";
             }
             else
                 Debug.LogError("Can't find cursor prefab");
         }
 
-        _textureStorage_right = handVisibilityOff;
+        textureStorage_right = handVisibilityOff;
     }
 
     void Start()
     {
+        /*****************************************************************
+         * Built-in gesture setup
+         * **************************************************************/
         controller = new Controller();
         controller.EnableGesture(Gesture.GestureType.TYPE_CIRCLE);
         controller.EnableGesture(Gesture.GestureType.TYPE_SCREEN_TAP);
         controller.EnableGesture(Gesture.GestureType.TYPE_KEY_TAP);
         controller.EnableGesture(Gesture.GestureType.TYPE_SWIPE);
-        //controller.Config.SetFloat("Gesture.ScreenTap.MinForwardVelocity", 30f);
-        //controller.Config.SetFloat("Gesture.ScreenTap.MinDistance", 2f);
+        //Default is 150f
         controller.Config.SetFloat("Gesture.Swipe.MinLength", 100f);
+        //Default is 1000f
         controller.Config.SetFloat("Gesture.Swipe.MinVelocity", 1250f);
         controller.Config.Save();
-        //controller.Config.SetFloat("Gesture.ScreenTap.HistorySeconds", .5f);
+        if (debugMode)
+            Debug.LogWarning("Leap Motion config saved");
     }
 
     void FixedUpdate()
@@ -212,7 +218,7 @@ public class LeapMouseKit : MonoBehaviour
                 if (!sticking)
                 {
                     //World position
-                    worldPosition_right = transform.position + new Vector3(runtimePosition_right.x, runtimePosition_right.y, transform.position.z);
+                    worldPosition_right = transform.position + new Vector3(runtimePosition_right.x, runtimePosition_right.y, 0);
                     //Screen position
                     screenPosition_right = new Vector2(UnityEngine.Screen.width * _rightHand.x, UnityEngine.Screen.height * _rightHand.y);
                     //Focus point
@@ -287,7 +293,7 @@ public class LeapMouseKit : MonoBehaviour
         {
             if (rightHandEnable)
             {
-                _cursorObject_right.transform.position = worldPosition_right;
+                cursorObject_right.transform.position = worldPosition_right;
             }
         }
     }
@@ -301,7 +307,7 @@ public class LeapMouseKit : MonoBehaviour
                 GUI.DrawTexture(new Rect(Mathf.Clamp(screenPosition_right.x, 0, UnityEngine.Screen.width + (screenCursorSize.x * 0.5f)) - screenCursorSize.x * 0.5f,
                     Mathf.Clamp(UnityEngine.Screen.height - screenPosition_right.y, 0, UnityEngine.Screen.height + (screenCursorSize.y * 0.5f)) - screenCursorSize.y * 0.5f,
                     screenCursorSize.x, screenCursorSize.y),
-                    _textureStorage_right);
+                    textureStorage_right);
         }
     }
 
@@ -320,11 +326,9 @@ public class LeapMouseKit : MonoBehaviour
         Gizmos.DrawRay(worldPosition_right, transform.forward * 100f);
     }
 
-    public GameObject lastStickTarget;
-
     bool StickToTarget(RaycastHit hit)
     {
-        if (hit.collider.collider)
+        if (hit.collider.GetComponent<Collider>())
         {
             if (hit.collider.gameObject != lastStickTarget)
             {
@@ -377,12 +381,11 @@ public class LeapMouseKit : MonoBehaviour
         hits = Physics.RaycastAll(worldPosition_right, transform.forward, 100f, raycastTarget);
 
         if (g == HandState.Miss)
-            _textureStorage_right = handVisibilityOff;
+            textureStorage_right = handVisibilityOff;
         else if (g == HandState.HandOpen)
-            _textureStorage_right = handOpen;
+            textureStorage_right = handOpen;
         else if (g == HandState.HandClose)
-            _textureStorage_right = handClose;
-
+            textureStorage_right = handClose;
 
         foreach (RaycastHit r in hits)
         {
@@ -407,5 +410,29 @@ public class LeapMouseKit : MonoBehaviour
 
         }
         #endregion
+    }
+
+    public static Vector3 GetWorldPosition(LeapMouseKit.HandSide hand)
+    {
+        if (hand == LeapMouseKit.HandSide.Left)
+            return worldPosition_left;
+        else
+            return worldPosition_right;
+    }
+
+    public static Vector3 GetScreenPosition(LeapMouseKit.HandSide hand)
+    {
+        if (hand == LeapMouseKit.HandSide.Left)
+            return screenPosition_left;
+        else
+            return screenPosition_right;
+    }
+
+    public static float GetGrabStrength(LeapMouseKit.HandSide hand)
+    {
+        if (hand == LeapMouseKit.HandSide.Left)
+            return grabStrength_left;
+        else
+            return grabStrength_right;
     }
 }

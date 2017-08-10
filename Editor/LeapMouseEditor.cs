@@ -79,7 +79,6 @@ public class ALeapMouseEditor : Editor
             me.enableCursorEvent = EditorGUILayout.Toggle("Enable Event", me.enableCursorEvent);
             me.cursorSticking = EditorGUILayout.Toggle("Stick Enable", me.cursorSticking);
 
-
             if (me.cursorSticking)
             {
                 EditorGUILayout.BeginHorizontal();
@@ -123,9 +122,9 @@ public class ALeapMouseEditor : Editor
             rightHandData.boolValue = EditorGUILayout.Foldout(rightHandData.boolValue, "Right Hand Data");
             if (rightHandData.boolValue)
             {
-                EditorGUILayout.Vector3Field("World Position", me.worldPosition_right);
-                EditorGUILayout.Vector3Field("Screen Position", me.screenPosition_right);
-                EditorGUILayout.FloatField("Grab Strength", me.grabStrength_right);
+                EditorGUILayout.Vector3Field("World Position", LeapMouseKit.worldPosition_right);
+                EditorGUILayout.Vector3Field("Screen Position", LeapMouseKit.screenPosition_right);
+                EditorGUILayout.FloatField("Grab Strength", LeapMouseKit.grabStrength_right);
             }
         }
 
